@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import List, Any, Dict
 
 
 class Metric(ABC):
@@ -18,8 +17,8 @@ class Metric(ABC):
     
     @abstractmethod
     def compute(self,
-               predictions: List[str],
-               references: List[str],
+               predictions: list[str],
+               references: list[str],
                **kwargs) -> float:
         """
         Compute metric score.
@@ -35,8 +34,8 @@ class Metric(ABC):
         pass
     
     def batch_compute(self,
-                     predictions_list: List[List[str]],
-                     references_list: List[List[str]]) -> List[float]:
+                     predictions_list: list[list[str]],
+                     references_list: list[list[str]]) -> list[float]:
         """
         Compute metric for multiple batches.
         

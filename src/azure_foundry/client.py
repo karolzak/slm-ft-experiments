@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import Any, Optional
 from dataclasses import dataclass
 
 
@@ -37,7 +37,7 @@ class AzureFoundryClient:
         """Establish connection to Azure AI Foundry"""
         pass
     
-    def list_available_models(self, task_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_available_models(self, task_type: Optional[str] = None) -> list[dict[str, Any]]:
         """
         List available base models in catalog.
         
@@ -53,7 +53,7 @@ class AzureFoundryClient:
                              base_model: str,
                              training_data_path: str,
                              validation_data_path: str,
-                             config: Dict[str, Any]) -> str:
+                             config: dict[str, Any]) -> str:
         """
         Create a finetuning job.
         
@@ -68,7 +68,7 @@ class AzureFoundryClient:
         """
         pass
     
-    def monitor_job(self, job_id: str) -> Dict[str, Any]:
+    def monitor_job(self, job_id: str) -> dict[str, Any]:
         """
         Get status of finetuning job.
         
@@ -83,7 +83,7 @@ class AzureFoundryClient:
     def deploy_model(self,
                     model_id: str,
                     deployment_name: str,
-                    compute_config: Dict[str, Any]) -> Dict[str, Any]:
+                    compute_config: dict[str, Any]) -> dict[str, Any]:
         """
         Deploy a finetuned model.
         

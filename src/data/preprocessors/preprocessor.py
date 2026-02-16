@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Any
 import pandas as pd
 
 
@@ -53,7 +53,7 @@ class DataPreprocessor:
         pass
     
     def format_prompt(self, 
-                     sample: Dict[str, Any],
+                     sample: dict[str, Any],
                      task_type: str,
                      include_system_message: bool = True) -> str:
         """
@@ -69,7 +69,7 @@ class DataPreprocessor:
         """
         pass
     
-    def tokenize(self, texts: List[str], **kwargs) -> Any:
+    def tokenize(self, texts: list[str], **kwargs) -> Any:
         """
         Tokenize texts.
         

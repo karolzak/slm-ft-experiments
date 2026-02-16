@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 
 @dataclass
@@ -8,7 +8,7 @@ class LoRAConfig:
     r: int = 8  # Rank
     lora_alpha: int = 16
     lora_dropout: float = 0.1
-    target_modules: List[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
+    target_modules: list[str] = field(default_factory=lambda: ["q_proj", "v_proj"])
     bias: str = "none"
     task_type: str = "CAUSAL_LM"
 
@@ -66,4 +66,4 @@ class TrainingConfig:
     
     # Additional parameters
     seed: int = 42
-    additional_params: Dict[str, Any] = field(default_factory=dict)
+    additional_params: dict[str, Any] = field(default_factory=dict)

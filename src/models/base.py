@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import Any, Optional
 from dataclasses import dataclass
 
 
@@ -22,7 +22,7 @@ class GenerationConfig:
     top_p: float = 1.0
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
-    stop_sequences: Optional[List[str]] = None
+    stop_sequences: Optional[list[str]] = None
 
 
 class BaseModelWrapper(ABC):
@@ -33,7 +33,7 @@ class BaseModelWrapper(ABC):
     and sizes (GPT-5, Phi, finetuned variants, etc.).
     """
     
-    def __init__(self, model_name: str, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, model_name: str, config: Optional[dict[str, Any]] = None):
         """
         Initialize model wrapper.
         
@@ -77,10 +77,10 @@ class BaseModelWrapper(ABC):
         pass
     
     def batch_generate(self,
-                      prompts: List[str],
+                      prompts: list[str],
                       generation_config: Optional[GenerationConfig] = None,
                       batch_size: int = 8,
-                      **kwargs) -> List[str]:
+                      **kwargs) -> list[str]:
         """
         Generate text for multiple prompts efficiently.
         
@@ -95,7 +95,7 @@ class BaseModelWrapper(ABC):
         """
         pass
     
-    def get_embeddings(self, text: str) -> List[float]:
+    def get_embeddings(self, text: str) -> list[float]:
         """
         Get embeddings for input text.
         

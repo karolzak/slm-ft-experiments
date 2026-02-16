@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import Any
 from dataclasses import dataclass
 import pandas as pd
 
@@ -11,12 +11,12 @@ class EvaluationResults:
     """Results from model evaluation"""
     model_name: str
     task_type: str
-    metrics: Dict[str, float]
-    predictions: List[str]
-    references: List[str]
-    latency_stats: Dict[str, float]
+    metrics: dict[str, float]
+    predictions: list[str]
+    references: list[str]
+    latency_stats: dict[str, float]
     cost_estimate: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class ModelEvaluator:
@@ -30,7 +30,7 @@ class ModelEvaluator:
     - Result aggregation and comparison
     """
     
-    def __init__(self, metrics: List[Metric]):
+    def __init__(self, metrics: list[Metric]):
         """
         Initialize evaluator.
         
@@ -59,7 +59,7 @@ class ModelEvaluator:
         pass
     
     def compare(self,
-               results_list: List[EvaluationResults]) -> pd.DataFrame:
+               results_list: list[EvaluationResults]) -> pd.DataFrame:
         """
         Compare results from multiple models.
         
@@ -75,7 +75,7 @@ class ModelEvaluator:
                             model: BaseModelWrapper,
                             dataset: pd.DataFrame,
                             task_type: str,
-                            batch_size: int) -> List[str]:
+                            batch_size: int) -> list[str]:
         """
         Generate predictions for entire dataset.
         
@@ -91,8 +91,8 @@ class ModelEvaluator:
         pass
     
     def _compute_metrics(self,
-                        predictions: List[str],
-                        references: List[str]) -> Dict[str, float]:
+                        predictions: list[str],
+                        references: list[str]) -> dict[str, float]:
         """
         Compute all metrics.
         

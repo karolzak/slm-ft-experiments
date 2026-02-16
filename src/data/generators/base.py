@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional
+from typing import Any, Optional
 from dataclasses import dataclass
 import pandas as pd
 
@@ -14,7 +14,7 @@ class DatasetConfig:
     val_split: float = 0.1
     test_split: float = 0.1
     seed: int = 42
-    additional_params: Optional[Dict[str, Any]] = None
+    additional_params: Optional[dict[str, Any]] = None
     
     def __post_init__(self):
         """Validate that splits sum to 1.0"""
@@ -44,7 +44,7 @@ class BaseDatasetGenerator(ABC):
         self.seed = config.seed
         
     @abstractmethod
-    def generate(self) -> Dict[str, pd.DataFrame]:
+    def generate(self) -> dict[str, pd.DataFrame]:
         """
         Generate synthetic dataset.
         
@@ -54,7 +54,7 @@ class BaseDatasetGenerator(ABC):
         pass
     
     @abstractmethod
-    def validate(self, dataset: Dict[str, pd.DataFrame]) -> bool:
+    def validate(self, dataset: dict[str, pd.DataFrame]) -> bool:
         """
         Validate generated dataset quality.
         
@@ -66,7 +66,7 @@ class BaseDatasetGenerator(ABC):
         """
         pass
     
-    def save(self, dataset: Dict[str, pd.DataFrame], output_dir: str) -> None:
+    def save(self, dataset: dict[str, pd.DataFrame], output_dir: str) -> None:
         """
         Save dataset to disk.
         
@@ -76,7 +76,7 @@ class BaseDatasetGenerator(ABC):
         """
         pass
     
-    def load(self, input_dir: str) -> Dict[str, pd.DataFrame]:
+    def load(self, input_dir: str) -> dict[str, pd.DataFrame]:
         """
         Load dataset from disk.
         
@@ -88,7 +88,7 @@ class BaseDatasetGenerator(ABC):
         """
         pass
     
-    def get_statistics(self, dataset: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+    def get_statistics(self, dataset: dict[str, pd.DataFrame]) -> dict[str, Any]:
         """
         Compute dataset statistics.
         
