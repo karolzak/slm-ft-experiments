@@ -9,6 +9,8 @@ description = "Initial scaffolding for SLM finetuning experiments"
 requires-python = ">=3.10"
 dependencies = [
     "python-dotenv>=1.0.0",
+    "pandas>=2.0.0",
+    "openai>=1.0.0",
 ]
 
 [tool.setuptools]
