@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 
 class TrainingStrategy(ABC):
@@ -10,7 +10,7 @@ class TrainingStrategy(ABC):
     """
     
     @abstractmethod
-    def prepare_model(self, model: Any, config: Dict[str, Any]) -> Any:
+    def prepare_model(self, model: Any, config: dict[str, Any]) -> Any:
         """
         Prepare model for training with this strategy.
         
