@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 from dataclasses import dataclass
 import pandas as pd
 
@@ -14,7 +14,7 @@ class DatasetConfig:
     val_split: float = 0.1
     test_split: float = 0.1
     seed: int = 42
-    additional_params: Optional[dict[str, Any]] = None
+    additional_params: dict[str, Any] | None = None
     
     def __post_init__(self):
         """Validate that splits sum to 1.0"""

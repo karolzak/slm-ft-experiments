@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 from dataclasses import dataclass
 
 
@@ -37,7 +37,7 @@ class AzureFoundryClient:
         """Establish connection to Azure AI Foundry"""
         pass
     
-    def list_available_models(self, task_type: Optional[str] = None) -> list[dict[str, Any]]:
+    def list_available_models(self, task_type: str | None = None) -> list[dict[str, Any]]:
         """
         List available base models in catalog.
         

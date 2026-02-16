@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -45,8 +45,8 @@ class TrainingConfig:
     
     # Strategy-specific
     strategy: str = "lora"  # 'full', 'lora', 'qlora'
-    lora_config: Optional[LoRAConfig] = None
-    qlora_config: Optional[QLoRAConfig] = None
+    lora_config: LoRAConfig | None = None
+    qlora_config: QLoRAConfig | None = None
     
     # Logging and checkpointing
     logging_steps: int = 10

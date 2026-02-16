@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 from dataclasses import dataclass
 
 
@@ -8,10 +8,10 @@ class ModelInfo:
     """Information about a model"""
     name: str
     type: str  # 'pretrained', 'finetuned'
-    base_model: Optional[str]
-    parameters: Optional[int]
+    base_model: str | None
+    parameters: int | None
     context_length: int
-    deployment_endpoint: Optional[str]
+    deployment_endpoint: str | None
 
 
 @dataclass
@@ -22,7 +22,7 @@ class GenerationConfig:
     top_p: float = 1.0
     frequency_penalty: float = 0.0
     presence_penalty: float = 0.0
-    stop_sequences: Optional[list[str]] = None
+    stop_sequences: list[str] | None = None
 
 
 class BaseModelWrapper(ABC):
@@ -33,7 +33,7 @@ class BaseModelWrapper(ABC):
     and sizes (GPT-5, Phi, finetuned variants, etc.).
     """
     
-    def __init__(self, model_name: str, config: Optional[dict[str, Any]] = None):
+    def __init__(self, model_name: str, config: dict[str, Any] | None = None):
         """
         Initialize model wrapper.
         
@@ -61,7 +61,7 @@ class BaseModelWrapper(ABC):
     @abstractmethod
     def generate(self, 
                 prompt: str,
-                generation_config: Optional[GenerationConfig] = None,
+                generation_config: GenerationConfig | None = None,
                 **kwargs) -> str:
         """
         Generate text from a single prompt.
@@ -78,7 +78,7 @@ class BaseModelWrapper(ABC):
     
     def batch_generate(self,
                       prompts: list[str],
-                      generation_config: Optional[GenerationConfig] = None,
+                      generation_config: GenerationConfig | None = None,
                       batch_size: int = 8,
                       **kwargs) -> list[str]:
         """
