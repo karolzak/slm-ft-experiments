@@ -15,6 +15,15 @@ class DatasetConfig:
     test_split: float = 0.1
     seed: int = 42
     additional_params: Optional[Dict[str, Any]] = None
+    
+    def __post_init__(self):
+        """Validate that splits sum to 1.0"""
+        total = self.train_split + self.val_split + self.test_split
+        if not abs(total - 1.0) < 1e-6:
+            raise ValueError(
+                f"train_split ({self.train_split}) + val_split ({self.val_split}) + "
+                f"test_split ({self.test_split}) must sum to 1.0, got {total}"
+            )
 
 
 class BaseDatasetGenerator(ABC):

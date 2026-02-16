@@ -23,6 +23,30 @@ class TestDatasetConfig(unittest.TestCase):
         self.assertEqual(config.difficulty_level, "medium")
         self.assertEqual(config.train_split, 0.8)
         self.assertEqual(config.seed, 42)
+    
+    def test_dataset_config_split_validation(self):
+        # Valid splits should work
+        config = DatasetConfig(
+            num_samples=100,
+            task_type="classification",
+            difficulty_level="medium",
+            train_split=0.7,
+            val_split=0.2,
+            test_split=0.1
+        )
+        self.assertEqual(config.train_split, 0.7)
+        
+        # Invalid splits should raise ValueError
+        with self.assertRaises(ValueError) as context:
+            DatasetConfig(
+                num_samples=100,
+                task_type="classification",
+                difficulty_level="medium",
+                train_split=0.5,
+                val_split=0.3,
+                test_split=0.3  # Sum = 1.1, invalid
+            )
+        self.assertIn("must sum to 1.0", str(context.exception))
 
 
 class TestModelInfo(unittest.TestCase):
