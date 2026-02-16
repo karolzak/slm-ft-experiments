@@ -36,15 +36,23 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         """
         super().__init__(config)
         
-        # Initialize Azure OpenAI client
-        self.client = AzureOpenAI(
-            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT", ""),
-            api_key=os.getenv("AZURE_OPENAI_API_KEY", ""),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
-        )
+        # Check if Azure OpenAI is configured
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+        api_key = os.getenv("AZURE_OPENAI_API_KEY", "")
         
-        # Get deployment name from environment or use default
-        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
+        # Initialize Azure OpenAI client only if credentials are provided
+        if endpoint and api_key:
+            self.client = AzureOpenAI(
+                azure_endpoint=endpoint,
+                api_key=api_key,
+                api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+            )
+            self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
+            self.use_llm = True
+        else:
+            self.client = None
+            self.deployment_name = None
+            self.use_llm = False
         
         # Set random seed for reproducibility
         random.seed(self.seed)
@@ -209,6 +217,10 @@ Style guidelines for {difficulty} difficulty:
 Write the notes in a natural, authentic style as if you're a real account manager documenting this meeting. Do not use markdown formatting or headers - just write the notes naturally.
 """
         
+        # Use fallback if LLM is not available
+        if not self.use_llm or not self.client:
+            return self._generate_fallback_note(scenario, difficulty, amount, currency)
+        
         try:
             response = self.client.chat.completions.create(
                 model=self.deployment_name,
@@ -297,6 +309,10 @@ JSON SCHEMA:
 {schema}
 
 Extract the information and return ONLY valid JSON (no markdown, no explanations, just the JSON object):"""
+        
+        # Use fallback if LLM is not available
+        if not self.use_llm or not self.client:
+            return self._extract_fallback_data(notes)
         
         try:
             response = self.client.chat.completions.create(
