@@ -9,6 +9,7 @@ import os
 import json
 import random
 from typing import Any
+from collections import Counter
 import pandas as pd
 from openai import AzureOpenAI
 
@@ -550,7 +551,6 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             dataset: Dictionary of DataFrames
             output_dir: Directory to save files
         """
-        import os
         os.makedirs(output_dir, exist_ok=True)
         
         for split_name, df in dataset.items():
@@ -568,8 +568,6 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
         Returns:
             Dictionary with 'train', 'val', 'test' DataFrames
         """
-        import os
-        
         dataset = {}
         for split_name in ["train", "val", "test"]:
             filepath = os.path.join(input_dir, f"{split_name}.csv")
@@ -619,7 +617,6 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             except:
                 pass
         
-        from collections import Counter
         stats["risk_level_distribution"] = dict(Counter(risk_levels))
         
         return stats
