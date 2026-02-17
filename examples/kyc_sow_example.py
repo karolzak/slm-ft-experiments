@@ -32,11 +32,16 @@ def main():
     load_dotenv()
     
     # Check if Azure OpenAI is configured
-    if not os.getenv("AZURE_OPENAI_ENDPOINT"):
-        print("⚠️  WARNING: AZURE_OPENAI_ENDPOINT not set")
-        print("The generator will use fallback templates instead of LLM generation.")
-        print("For best results, configure Azure OpenAI credentials in .env file.")
+    if not os.getenv("AZURE_OPENAI_ENDPOINT") or not os.getenv("AZURE_OPENAI_API_KEY"):
+        print("❌ ERROR: Azure OpenAI credentials not configured")
         print()
+        print("The KYC/SOW generator requires Azure OpenAI credentials.")
+        print("Please set the following environment variables in your .env file:")
+        print("  - AZURE_OPENAI_ENDPOINT")
+        print("  - AZURE_OPENAI_API_KEY")
+        print("  - AZURE_OPENAI_DEPLOYMENT (optional, defaults to 'gpt-4')")
+        print()
+        return
     
     # Create configuration
     config = DatasetConfig(

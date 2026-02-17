@@ -10,7 +10,6 @@ The KYC/SOW Data Generator creates synthetic datasets for **Know Your Customer (
 - ✅ **12+ Scenario Types**: Employment, business sale, inheritance, crypto, property, investments, etc.
 - ✅ **3 Difficulty Levels**: Easy, medium, and hard samples with varying complexity
 - ✅ **Risk Assessment**: Automatic categorization into low, medium, and high risk levels
-- ✅ **Fallback Mode**: Works without Azure credentials using template-based generation
 - ✅ **Comprehensive Validation**: 12 validation rules ensure dataset quality
 - ✅ **Train/Val/Test Splits**: Automatic dataset splitting with configurable ratios
 
@@ -26,7 +25,7 @@ pip install -e .
 
 ## Quick Start
 
-### 1. Configure Azure OpenAI (Optional)
+### 1. Configure Azure OpenAI (Required)
 
 Create a `.env` file with your Azure credentials:
 
@@ -36,7 +35,7 @@ AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4  # or your deployment name
 ```
 
-**Note**: The generator works without Azure credentials in fallback mode, but LLM-powered generation produces more realistic and varied data.
+**Note**: Azure OpenAI credentials are required. The generator will raise a `ValueError` if credentials are not configured.
 
 ### 2. Basic Usage
 
@@ -315,21 +314,26 @@ python -m unittest discover -q
 
 ## Performance Considerations
 
-- **With LLM**: ~2-5 seconds per sample (depends on Azure response time)
-- **Fallback Mode**: ~instant per sample
+- **Generation Time**: ~2-5 seconds per sample (depends on Azure OpenAI response time)
 - **Recommended**: Start with 20-50 samples for testing, scale to 500+ for production
 - **Cost**: Azure OpenAI has per-token pricing - monitor usage for large datasets
+- **Rate Limits**: Azure OpenAI has TPM (tokens per minute) and RPM (requests per minute) limits
 
 ## Troubleshooting
 
 ### Issue: "No module named 'openai'"
 **Solution**: Install dependencies with `pip install openai pandas python-dotenv`
 
-### Issue: Generator seems slow or hangs
-**Solution**: Check Azure API status and rate limits. Consider using fallback mode for testing.
+### Issue: "Azure OpenAI credentials are required"
+**Solution**: Set up Azure OpenAI credentials in your `.env` file:
+```bash
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_DEPLOYMENT=gpt-4
+```
 
-### Issue: Low data variety in fallback mode
-**Solution**: Configure Azure OpenAI credentials for LLM-powered generation.
+### Issue: Generator seems slow or hangs
+**Solution**: Check Azure API status and rate limits. Ensure your Azure OpenAI deployment is active and has sufficient quota.
 
 ### Issue: Validation fails
 **Solution**: Check console output for specific validation errors. Common issues:

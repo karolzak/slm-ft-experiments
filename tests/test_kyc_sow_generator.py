@@ -26,16 +26,38 @@ class TestKYCSOWDataGenerator(unittest.TestCase):
             seed=42
         )
     
-    def test_generator_initialization(self):
+    @patch.dict(os.environ, {
+        'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+        'AZURE_OPENAI_API_KEY': 'test-key'
+    })
+    @patch('src.data.generators.kyc_sow_generator.AzureOpenAI')
+    def test_generator_initialization(self, mock_client_class):
         """Test generator initialization."""
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        
         generator = KYCSOWDataGenerator(self.config)
         self.assertEqual(generator.config, self.config)
         self.assertEqual(generator.seed, 42)
-        # Client can be None if Azure credentials are not configured
-        self.assertIn('use_llm', dir(generator))
+        self.assertIsNotNone(generator.client)
     
-    def test_scenario_templates(self):
+    def test_generator_initialization_without_credentials(self):
+        """Test that generator fails without Azure credentials."""
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaises(ValueError) as context:
+                KYCSOWDataGenerator(self.config)
+            self.assertIn("Azure OpenAI credentials are required", str(context.exception))
+    
+    @patch.dict(os.environ, {
+        'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+        'AZURE_OPENAI_API_KEY': 'test-key'
+    })
+    @patch('src.data.generators.kyc_sow_generator.AzureOpenAI')
+    def test_scenario_templates(self, mock_client_class):
         """Test that scenario templates are properly defined."""
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        
         generator = KYCSOWDataGenerator(self.config)
         scenarios = generator._get_scenario_templates()
         
@@ -55,49 +77,10 @@ class TestKYCSOWDataGenerator(unittest.TestCase):
             self.assertIn("medium", scenario["typical_amounts"])
             self.assertIn("hard", scenario["typical_amounts"])
     
-    def test_fallback_note_generation(self):
-        """Test fallback note generation."""
-        generator = KYCSOWDataGenerator(self.config)
-        scenarios = generator._get_scenario_templates()
-        scenario = scenarios[0]
-        
-        # Test easy difficulty
-        note = generator._generate_fallback_note(scenario, "easy", 50000, "GBP")
-        self.assertIsInstance(note, str)
-        self.assertGreater(len(note), 50)
-        self.assertIn("GBP", note)
-        self.assertIn("50,000", note)
-        
-        # Test medium difficulty
-        note = generator._generate_fallback_note(scenario, "medium", 100000, "USD")
-        self.assertIsInstance(note, str)
-        self.assertIn("USD", note)
-        
-        # Test hard difficulty
-        note = generator._generate_fallback_note(scenario, "hard", 200000, "EUR")
-        self.assertIsInstance(note, str)
-        self.assertIn("EUR", note)
-    
-    def test_fallback_data_extraction(self):
-        """Test fallback data extraction."""
-        generator = KYCSOWDataGenerator(self.config)
-        
-        # Test with low risk notes
-        notes = "Meeting with John Smith. Low risk assessment."
-        data = generator._extract_fallback_data(notes)
-        
-        self.assertIsInstance(data, dict)
-        self.assertIn("customer_name", data)
-        self.assertIn("wealth_sources", data)
-        self.assertIn("risk_level", data)
-        self.assertIsInstance(data["wealth_sources"], list)
-        self.assertGreater(len(data["wealth_sources"]), 0)
-        
-        # Test with high risk notes
-        notes = "Complex case with high risk assessment."
-        data = generator._extract_fallback_data(notes)
-        self.assertEqual(data["risk_level"], "high")
-    
+    @patch.dict(os.environ, {
+        'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+        'AZURE_OPENAI_API_KEY': 'test-key'
+    })
     @patch('src.data.generators.kyc_sow_generator.AzureOpenAI')
     def test_generate_with_mock_llm(self, mock_client_class):
         """Test dataset generation with mocked LLM."""
@@ -219,8 +202,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
             "test": df[17:]
         }
         
-        generator = KYCSOWDataGenerator(self.config)
-        self.assertTrue(generator.validate(dataset))
+        with patch.dict(os.environ, {
+            'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+            'AZURE_OPENAI_API_KEY': 'test-key'
+        }):
+            with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                generator = KYCSOWDataGenerator(self.config)
+                self.assertTrue(generator.validate(dataset))
     
     def test_validate_missing_columns(self):
         """Test validation fails with missing columns."""
@@ -235,8 +223,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         dataset = {"train": df, "val": df, "test": df}
         
-        generator = KYCSOWDataGenerator(self.config)
-        self.assertFalse(generator.validate(dataset))
+        with patch.dict(os.environ, {
+            'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+            'AZURE_OPENAI_API_KEY': 'test-key'
+        }):
+            with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                generator = KYCSOWDataGenerator(self.config)
+                self.assertFalse(generator.validate(dataset))
     
     def test_validate_invalid_json(self):
         """Test validation fails with invalid JSON."""
@@ -251,8 +244,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         dataset = {"train": df, "val": df, "test": df}
         
-        generator = KYCSOWDataGenerator(self.config)
-        self.assertFalse(generator.validate(dataset))
+        with patch.dict(os.environ, {
+            'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+            'AZURE_OPENAI_API_KEY': 'test-key'
+        }):
+            with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                generator = KYCSOWDataGenerator(self.config)
+                self.assertFalse(generator.validate(dataset))
     
     def test_validate_missing_required_fields(self):
         """Test validation fails with missing required JSON fields."""
@@ -268,8 +266,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         dataset = {"train": df, "val": df, "test": df}
         
-        generator = KYCSOWDataGenerator(self.config)
-        self.assertFalse(generator.validate(dataset))
+        with patch.dict(os.environ, {
+            'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+            'AZURE_OPENAI_API_KEY': 'test-key'
+        }):
+            with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                generator = KYCSOWDataGenerator(self.config)
+                self.assertFalse(generator.validate(dataset))
     
     def test_validate_empty_wealth_sources(self):
         """Test validation fails with empty wealth_sources."""
@@ -288,8 +291,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         dataset = {"train": df, "val": df, "test": df}
         
-        generator = KYCSOWDataGenerator(self.config)
-        self.assertFalse(generator.validate(dataset))
+        with patch.dict(os.environ, {
+            'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+            'AZURE_OPENAI_API_KEY': 'test-key'
+        }):
+            with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                generator = KYCSOWDataGenerator(self.config)
+                self.assertFalse(generator.validate(dataset))
     
     def test_save_and_load(self):
         """Test save and load functionality."""
@@ -317,8 +325,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         # Save to temp directory
         temp_dir = tempfile.mkdtemp()
         try:
-            generator = KYCSOWDataGenerator(self.config)
-            generator.save(dataset, temp_dir)
+            with patch.dict(os.environ, {
+                'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+                'AZURE_OPENAI_API_KEY': 'test-key'
+            }):
+                with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                    generator = KYCSOWDataGenerator(self.config)
+                    generator.save(dataset, temp_dir)
             
             # Verify files exist
             self.assertTrue(os.path.exists(os.path.join(temp_dir, "train.csv")))
@@ -359,8 +372,13 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
             "test": df[3:]
         }
         
-        generator = KYCSOWDataGenerator(self.config)
-        stats = generator.get_statistics(dataset)
+        with patch.dict(os.environ, {
+            'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+            'AZURE_OPENAI_API_KEY': 'test-key'
+        }):
+            with patch('src.data.generators.kyc_sow_generator.AzureOpenAI'):
+                generator = KYCSOWDataGenerator(self.config)
+                stats = generator.get_statistics(dataset)
         
         self.assertEqual(stats["total_samples"], 4)
         self.assertEqual(stats["splits"]["train"], 2)

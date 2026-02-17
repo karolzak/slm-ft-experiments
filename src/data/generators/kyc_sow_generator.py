@@ -34,6 +34,9 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         
         Args:
             config: DatasetConfig object with generation parameters
+            
+        Raises:
+            ValueError: If Azure OpenAI credentials are not configured
         """
         super().__init__(config)
         
@@ -41,19 +44,20 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
         api_key = os.getenv("AZURE_OPENAI_API_KEY", "")
         
-        # Initialize Azure OpenAI client only if credentials are provided
-        if endpoint and api_key:
-            self.client = AzureOpenAI(
-                azure_endpoint=endpoint,
-                api_key=api_key,
-                api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+        # Require Azure OpenAI credentials
+        if not endpoint or not api_key:
+            raise ValueError(
+                "Azure OpenAI credentials are required for KYC/SOW data generation. "
+                "Please set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables."
             )
-            self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
-            self.use_llm = True
-        else:
-            self.client = None
-            self.deployment_name = None
-            self.use_llm = False
+        
+        # Initialize Azure OpenAI client
+        self.client = AzureOpenAI(
+            azure_endpoint=endpoint,
+            api_key=api_key,
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
+        )
+        self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
         
         # Set random seed for reproducibility
         random.seed(self.seed)
@@ -218,59 +222,14 @@ Style guidelines for {difficulty} difficulty:
 Write the notes in a natural, authentic style as if you're a real account manager documenting this meeting. Do not use markdown formatting or headers - just write the notes naturally.
 """
         
-        # Use fallback if LLM is not available
-        if not self.use_llm or not self.client:
-            return self._generate_fallback_note(scenario, difficulty, amount, currency)
+        response = self.client.chat.completions.create(
+            model=self.deployment_name,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000,
+            temperature=0.8
+        )
         
-        try:
-            response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=1000,
-                temperature=0.8
-            )
-            
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            # Fallback to template-based generation if API fails
-            return self._generate_fallback_note(scenario, difficulty, amount, currency)
-    
-    def _generate_fallback_note(
-        self,
-        scenario: dict[str, Any],
-        difficulty: str,
-        amount: int,
-        currency: str
-    ) -> str:
-        """
-        Generate a simple template-based note as fallback.
-        
-        Args:
-            scenario: Scenario template dictionary
-            difficulty: Difficulty level
-            amount: Amount of funds
-            currency: Currency code
-            
-        Returns:
-            Template-based account manager notes
-        """
-        names = ["John Smith", "Sarah Thompson", "Michael Chen", "Emma Wilson", "David Brown"]
-        name = random.choice(names)
-        
-        if difficulty == "easy":
-            note = f"""Meeting with {name} regarding deposit of {currency} {amount:,}.
-
-Source of funds: {scenario['description']}. All documentation provided and verified. Clear explanation of source. No concerns identified. Risk assessment: Low. Approved for standard processing."""
-        elif difficulty == "medium":
-            note = f"""Call with {name} about {currency} {amount:,} deposit.
-
-{scenario['description']}. Some documentation pending. Need to follow up on additional verification. Minor questions but overall acceptable. Risk assessment: Medium."""
-        else:
-            note = f"""Complex case: {name}, {currency} {amount:,}.
-
-{scenario['description']}. Multiple sources, incomplete documentation. Some inconsistencies noted. Requires enhanced due diligence. Risk assessment: High. Hold pending further review."""
-        
-        return note
+        return response.choices[0].message.content.strip()
     
     def _extract_structured_data_with_llm(self, notes: str) -> dict[str, Any]:
         """
@@ -311,83 +270,40 @@ JSON SCHEMA:
 
 Extract the information and return ONLY valid JSON (no markdown, no explanations, just the JSON object):"""
         
-        # Use fallback if LLM is not available
-        if not self.use_llm or not self.client:
-            return self._extract_fallback_data(notes)
+        response = self.client.chat.completions.create(
+            model=self.deployment_name,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.3
+        )
         
-        try:
-            response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=800,
-                temperature=0.3
-            )
-            
-            content = response.choices[0].message.content.strip()
-            
-            # Clean up markdown code blocks if present
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-            
-            # Parse and validate JSON
-            extracted_data = json.loads(content)
-            
-            # Ensure required fields exist
-            if "customer_name" not in extracted_data:
-                extracted_data["customer_name"] = "Unknown"
-            if "wealth_sources" not in extracted_data or not extracted_data["wealth_sources"]:
-                extracted_data["wealth_sources"] = [{"source_type": "unknown", "amount": None, "currency": "GBP", "description": "Not specified"}]
-            if "risk_level" not in extracted_data:
-                extracted_data["risk_level"] = "medium"
-            if "documents_provided" not in extracted_data:
-                extracted_data["documents_provided"] = []
-            if "flags" not in extracted_data:
-                extracted_data["flags"] = []
-                
-            return extracted_data
-            
-        except Exception as e:
-            # Fallback to basic extraction
-            return self._extract_fallback_data(notes)
-    
-    def _extract_fallback_data(self, notes: str) -> dict[str, Any]:
-        """
-        Extract basic structured data as fallback.
+        content = response.choices[0].message.content.strip()
         
-        Args:
-            notes: Free-text notes
-            
-        Returns:
-            Basic structured data dictionary
-        """
-        # Simple extraction logic
-        risk_level = "low"
-        if "high" in notes.lower() and "risk" in notes.lower():
-            risk_level = "high"
-        elif "medium" in notes.lower() and "risk" in notes.lower():
-            risk_level = "medium"
+        # Clean up markdown code blocks if present
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
         
-        return {
-            "customer_name": "Unknown Client",
-            "occupation": None,
-            "wealth_sources": [
-                {
-                    "source_type": "unknown",
-                    "amount": None,
-                    "currency": "GBP",
-                    "description": "Source not clearly specified"
-                }
-            ],
-            "total_amount": None,
-            "risk_level": risk_level,
-            "documents_provided": [],
-            "flags": []
-        }
+        # Parse and validate JSON
+        extracted_data = json.loads(content)
+        
+        # Ensure required fields exist
+        if "customer_name" not in extracted_data:
+            extracted_data["customer_name"] = "Unknown"
+        if "wealth_sources" not in extracted_data or not extracted_data["wealth_sources"]:
+            extracted_data["wealth_sources"] = [{"source_type": "unknown", "amount": None, "currency": "GBP", "description": "Not specified"}]
+        if "risk_level" not in extracted_data:
+            extracted_data["risk_level"] = "medium"
+        if "documents_provided" not in extracted_data:
+            extracted_data["documents_provided"] = []
+        if "flags" not in extracted_data:
+            extracted_data["flags"] = []
+            
+        return extracted_data
     
     def generate(self) -> dict[str, pd.DataFrame]:
         """
