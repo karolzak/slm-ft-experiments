@@ -83,6 +83,8 @@ uv run examples/kyc_sow_example.py
 
 Each dataset contains train, validation, and test splits as pandas DataFrames with the following columns:
 
+When saved to disk, splits are written as newline-delimited JSON files: `train.jsonl`, `val.jsonl`, and `test.jsonl`.
+
 | Column | Type | Description |
 |--------|------|-------------|
 | `notes` | string | Free-text account manager notes |

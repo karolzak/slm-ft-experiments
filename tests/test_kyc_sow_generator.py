@@ -387,9 +387,9 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
                     generator.save(dataset, temp_dir)
             
             # Verify files exist
-            self.assertTrue(os.path.exists(os.path.join(temp_dir, "train.csv")))
-            self.assertTrue(os.path.exists(os.path.join(temp_dir, "val.csv")))
-            self.assertTrue(os.path.exists(os.path.join(temp_dir, "test.csv")))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "train.jsonl")))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "val.jsonl")))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "test.jsonl")))
             
             # Load back
             loaded = generator.load(temp_dir)

@@ -560,7 +560,7 @@ JSON SCHEMA:
     
     def save(self, dataset: dict[str, pd.DataFrame], output_dir: str) -> None:
         """
-        Save dataset to disk as CSV files.
+        Save dataset to disk as JSONL files.
         
         Args:
             dataset: Dictionary of DataFrames
@@ -569,8 +569,8 @@ JSON SCHEMA:
         os.makedirs(output_dir, exist_ok=True)
         
         for split_name, df in dataset.items():
-            filepath = os.path.join(output_dir, f"{split_name}.csv")
-            df.to_csv(filepath, index=False)
+            filepath = os.path.join(output_dir, f"{split_name}.jsonl")
+            df.to_json(filepath, orient="records", lines=True, force_ascii=False)
             print(f"Saved {split_name} split to {filepath} ({len(df)} samples)")
     
     def load(self, input_dir: str) -> dict[str, pd.DataFrame]:
@@ -585,11 +585,11 @@ JSON SCHEMA:
         """
         dataset = {}
         for split_name in ["train", "val", "test"]:
-            filepath = os.path.join(input_dir, f"{split_name}.csv")
+            filepath = os.path.join(input_dir, f"{split_name}.jsonl")
             if os.path.exists(filepath):
-                dataset[split_name] = pd.read_csv(filepath)
+                dataset[split_name] = pd.read_json(filepath, lines=True)
             else:
-                print(f"WARNING: {split_name}.csv not found in {input_dir}")
+                print(f"WARNING: {split_name}.jsonl not found in {input_dir}")
         
         return dataset
     
