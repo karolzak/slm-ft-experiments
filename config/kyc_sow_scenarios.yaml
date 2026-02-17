@@ -1,0 +1,118 @@
+# KYC/SOW Scenario Templates Configuration
+#
+# Defines various wealth source scenarios for synthetic data generation.
+# Each scenario includes:
+# - scenario_type: Unique identifier for the scenario
+# - description: Human-readable description of the scenario
+# - typical_amounts: Amount ranges for each difficulty level (easy, medium, hard)
+# - currencies: List of typical currencies for this scenario
+# - risk_profile: General risk level (low, medium, high)
+
+scenarios:
+  - scenario_type: employment
+    description: Employed professional with salary-based income
+    typical_amounts:
+      easy: [10000, 50000]
+      medium: [50000, 150000]
+      hard: [150000, 500000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: low
+
+  - scenario_type: business_sale
+    description: Business owner who sold their company
+    typical_amounts:
+      easy: [100000, 500000]
+      medium: [500000, 2000000]
+      hard: [2000000, 10000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: medium
+
+  - scenario_type: inheritance
+    description: Inherited wealth from estate transfer
+    typical_amounts:
+      easy: [50000, 200000]
+      medium: [200000, 1000000]
+      hard: [1000000, 5000000]
+    currencies: [GBP, USD, EUR, CHF]
+    risk_profile: low
+
+  - scenario_type: property_sale
+    description: Real estate sale or property investment
+    typical_amounts:
+      easy: [100000, 300000]
+      medium: [300000, 1000000]
+      hard: [1000000, 5000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: low
+
+  - scenario_type: investment
+    description: Investment returns from stocks, bonds, or funds
+    typical_amounts:
+      easy: [20000, 100000]
+      medium: [100000, 500000]
+      hard: [500000, 3000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: low
+
+  - scenario_type: pension
+    description: Pension lump sum or retirement funds
+    typical_amounts:
+      easy: [50000, 150000]
+      medium: [150000, 500000]
+      hard: [500000, 2000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: low
+
+  - scenario_type: crypto
+    description: Cryptocurrency trading or investment gains
+    typical_amounts:
+      easy: [10000, 50000]
+      medium: [50000, 500000]
+      hard: [500000, 5000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: high
+
+  - scenario_type: startup_exit
+    description: Entrepreneur who exited a startup or received venture funding
+    typical_amounts:
+      easy: [200000, 500000]
+      medium: [500000, 3000000]
+      hard: [3000000, 20000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: medium
+
+  - scenario_type: gift
+    description: Gift from family member or third party
+    typical_amounts:
+      easy: [5000, 30000]
+      medium: [30000, 100000]
+      hard: [100000, 500000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: medium
+
+  - scenario_type: international_transfer
+    description: Cross-border funds with multiple jurisdictions
+    typical_amounts:
+      easy: [50000, 200000]
+      medium: [200000, 1000000]
+      hard: [1000000, 5000000]
+    currencies: [GBP, USD, EUR, CHF, SGD]
+    risk_profile: high
+
+  - scenario_type: rental_income
+    description: Accumulated rental income from property portfolio
+    typical_amounts:
+      easy: [20000, 80000]
+      medium: [80000, 300000]
+      hard: [300000, 1000000]
+    currencies: [GBP, USD, EUR]
+    risk_profile: low
+
+  - scenario_type: complex_portfolio
+    description: High-net-worth individual with multiple wealth sources
+    typical_amounts:
+      easy: [500000, 1000000]
+      medium: [1000000, 5000000]
+      hard: [5000000, 50000000]
+    currencies: [GBP, USD, EUR, CHF]
+    risk_profile: high
