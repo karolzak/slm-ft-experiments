@@ -108,7 +108,7 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
                 "risk_profile": scenario['risk_profile']
             })
     
-    def _generate_note_with_llm(
+    def _generate_notes_with_llm(
         self,
         scenario: dict[str, Any],
         difficulty: str,
@@ -297,8 +297,8 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             # Select currency
             currency = random.choice(scenario["currencies"])
             
-            # Generate note
-            notes = self._generate_note_with_llm(scenario, difficulty, amount, currency)
+            # Generate notes
+            notes = self._generate_notes_with_llm(scenario, difficulty, amount, currency)
             
             # Extract structured data
             structured_data = self._extract_structured_data_with_llm(notes)
