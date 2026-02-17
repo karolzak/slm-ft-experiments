@@ -54,12 +54,12 @@ class TestKYCSOWDataGenerator(unittest.TestCase):
     })
     @patch('src.data.generators.kyc_sow_generator.AzureOpenAI')
     def test_scenario_templates(self, mock_client_class):
-        """Test that scenario templates are properly defined."""
+        """Test that scenario templates are properly loaded."""
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         
         generator = KYCSOWDataGenerator(self.config)
-        scenarios = generator._get_scenario_templates()
+        scenarios = generator.scenarios  # Now loaded from config file
         
         # Check we have sufficient scenario variety
         self.assertGreaterEqual(len(scenarios), 10, "Should have at least 10 scenario types")

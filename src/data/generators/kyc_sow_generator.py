@@ -8,12 +8,16 @@ for Know Your Customer (KYC) and Source of Wealth (SOW) extraction tasks.
 import os
 import json
 import random
+import yaml
+from pathlib import Path
 from typing import Any
 from collections import Counter
 import pandas as pd
 from openai import AzureOpenAI
+from pydantic import ValidationError
 
 from .base import BaseDatasetGenerator, DatasetConfig
+from .kyc_sow_schema import KYCSOWOutput, get_kyc_sow_schema
 
 
 class KYCSOWDataGenerator(BaseDatasetGenerator):
@@ -59,102 +63,50 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         )
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
         
+        # Load scenario templates from config file
+        self._load_scenario_templates()
+        
         # Set random seed for reproducibility
         random.seed(self.seed)
     
-    def _get_scenario_templates(self) -> list[dict[str, Any]]:
+    def _load_scenario_templates(self) -> None:
         """
-        Define scenario templates for various wealth source types.
+        Load scenario templates from YAML configuration file.
         
-        Returns:
-            List of scenario template dictionaries
+        Raises:
+            FileNotFoundError: If scenario config file not found
+            ValueError: If scenario config is invalid
         """
-        return [
-            {
-                "scenario_type": "employment",
-                "description": "Employed professional with salary-based income",
-                "typical_amounts": {"easy": (10000, 50000), "medium": (50000, 150000), "hard": (150000, 500000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "low"
-            },
-            {
-                "scenario_type": "business_sale",
-                "description": "Business owner who sold their company",
-                "typical_amounts": {"easy": (100000, 500000), "medium": (500000, 2000000), "hard": (2000000, 10000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "medium"
-            },
-            {
-                "scenario_type": "inheritance",
-                "description": "Inherited wealth from estate transfer",
-                "typical_amounts": {"easy": (50000, 200000), "medium": (200000, 1000000), "hard": (1000000, 5000000)},
-                "currencies": ["GBP", "USD", "EUR", "CHF"],
-                "risk_profile": "low"
-            },
-            {
-                "scenario_type": "property_sale",
-                "description": "Real estate sale or property investment",
-                "typical_amounts": {"easy": (100000, 300000), "medium": (300000, 1000000), "hard": (1000000, 5000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "low"
-            },
-            {
-                "scenario_type": "investment",
-                "description": "Investment returns from stocks, bonds, or funds",
-                "typical_amounts": {"easy": (20000, 100000), "medium": (100000, 500000), "hard": (500000, 3000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "low"
-            },
-            {
-                "scenario_type": "pension",
-                "description": "Pension lump sum or retirement funds",
-                "typical_amounts": {"easy": (50000, 150000), "medium": (150000, 500000), "hard": (500000, 2000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "low"
-            },
-            {
-                "scenario_type": "crypto",
-                "description": "Cryptocurrency trading or investment gains",
-                "typical_amounts": {"easy": (10000, 50000), "medium": (50000, 500000), "hard": (500000, 5000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "high"
-            },
-            {
-                "scenario_type": "startup_exit",
-                "description": "Entrepreneur who exited a startup or received venture funding",
-                "typical_amounts": {"easy": (200000, 500000), "medium": (500000, 3000000), "hard": (3000000, 20000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "medium"
-            },
-            {
-                "scenario_type": "gift",
-                "description": "Gift from family member or third party",
-                "typical_amounts": {"easy": (5000, 30000), "medium": (30000, 100000), "hard": (100000, 500000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "medium"
-            },
-            {
-                "scenario_type": "international_transfer",
-                "description": "Cross-border funds with multiple jurisdictions",
-                "typical_amounts": {"easy": (50000, 200000), "medium": (200000, 1000000), "hard": (1000000, 5000000)},
-                "currencies": ["GBP", "USD", "EUR", "CHF", "SGD"],
-                "risk_profile": "high"
-            },
-            {
-                "scenario_type": "rental_income",
-                "description": "Accumulated rental income from property portfolio",
-                "typical_amounts": {"easy": (20000, 80000), "medium": (80000, 300000), "hard": (300000, 1000000)},
-                "currencies": ["GBP", "USD", "EUR"],
-                "risk_profile": "low"
-            },
-            {
-                "scenario_type": "complex_portfolio",
-                "description": "High-net-worth individual with multiple wealth sources",
-                "typical_amounts": {"easy": (500000, 1000000), "medium": (1000000, 5000000), "hard": (5000000, 50000000)},
-                "currencies": ["GBP", "USD", "EUR", "CHF"],
-                "risk_profile": "high"
-            }
-        ]
+        # Find the config file relative to this module
+        module_dir = Path(__file__).parent
+        config_path = module_dir.parent.parent.parent / "config" / "kyc_sow_scenarios.yaml"
+        
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"KYC/SOW scenario configuration file not found at {config_path}"
+            )
+        
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+        
+        if 'scenarios' not in config_data:
+            raise ValueError("Invalid scenario config: 'scenarios' key not found")
+        
+        # Convert YAML format to internal format
+        self.scenarios = []
+        for scenario in config_data['scenarios']:
+            # Convert amount ranges from lists to tuples
+            typical_amounts = {}
+            for difficulty, amounts in scenario['typical_amounts'].items():
+                typical_amounts[difficulty] = tuple(amounts)
+            
+            self.scenarios.append({
+                "scenario_type": scenario['scenario_type'],
+                "description": scenario['description'],
+                "typical_amounts": typical_amounts,
+                "currencies": scenario['currencies'],
+                "risk_profile": scenario['risk_profile']
+            })
     
     def _generate_note_with_llm(
         self,
@@ -240,23 +192,13 @@ Write the notes in a natural, authentic style as if you're a real account manage
             
         Returns:
             Dictionary with structured extracted data
+            
+        Raises:
+            json.JSONDecodeError: If LLM returns invalid JSON
+            ValidationError: If extracted data doesn't match schema
         """
-        schema = """{
-  "customer_name": "string",
-  "occupation": "string or null",
-  "wealth_sources": [
-    {
-      "source_type": "string (e.g., 'employment', 'business_sale', 'inheritance', 'investment', 'property_sale', 'pension', 'crypto', 'gift', 'rental_income', 'startup_exit')",
-      "amount": "number or null",
-      "currency": "string (e.g., 'GBP', 'USD', 'EUR')",
-      "description": "string - brief explanation"
-    }
-  ],
-  "total_amount": "number or null",
-  "risk_level": "string ('low', 'medium', or 'high')",
-  "documents_provided": ["array of strings"],
-  "flags": ["array of strings - concerns or red flags"]
-}"""
+        # Get schema from Pydantic model
+        schema = json.dumps(get_kyc_sow_schema(), indent=2)
         
         prompt = f"""You are an expert at extracting structured information from account manager notes for compliance and risk assessment.
 
@@ -270,40 +212,62 @@ JSON SCHEMA:
 
 Extract the information and return ONLY valid JSON (no markdown, no explanations, just the JSON object):"""
         
-        response = self.client.chat.completions.create(
-            model=self.deployment_name,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=800,
-            temperature=0.3
-        )
-        
-        content = response.choices[0].message.content.strip()
-        
-        # Clean up markdown code blocks if present
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
-        
-        # Parse and validate JSON
-        extracted_data = json.loads(content)
-        
-        # Ensure required fields exist
-        if "customer_name" not in extracted_data:
-            extracted_data["customer_name"] = "Unknown"
-        if "wealth_sources" not in extracted_data or not extracted_data["wealth_sources"]:
-            extracted_data["wealth_sources"] = [{"source_type": "unknown", "amount": None, "currency": "GBP", "description": "Not specified"}]
-        if "risk_level" not in extracted_data:
-            extracted_data["risk_level"] = "medium"
-        if "documents_provided" not in extracted_data:
-            extracted_data["documents_provided"] = []
-        if "flags" not in extracted_data:
-            extracted_data["flags"] = []
+        try:
+            response = self.client.chat.completions.create(
+                model=self.deployment_name,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=800,
+                temperature=0.3
+            )
             
-        return extracted_data
+            content = response.choices[0].message.content.strip()
+            
+            # Clean up markdown code blocks if present
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            content = content.strip()
+            
+            # Parse JSON
+            extracted_data = json.loads(content)
+            
+            # Validate against Pydantic schema
+            validated_output = KYCSOWOutput(**extracted_data)
+            
+            # Return as dictionary
+            return validated_output.model_dump()
+            
+        except json.JSONDecodeError as e:
+            raise json.JSONDecodeError(
+                f"Failed to parse JSON from LLM response. Content: {content[:200]}...",
+                e.doc,
+                e.pos
+            )
+        except ValidationError as e:
+            # If validation fails, try to fix common issues and return best-effort result
+            print(f"WARNING: Schema validation failed: {e}")
+            
+            # Ensure required fields exist with defaults
+            if "customer_name" not in extracted_data:
+                extracted_data["customer_name"] = "Unknown"
+            if "wealth_sources" not in extracted_data or not extracted_data["wealth_sources"]:
+                extracted_data["wealth_sources"] = [{
+                    "source_type": "unknown",
+                    "amount": None,
+                    "currency": "GBP",
+                    "description": "Not specified"
+                }]
+            if "risk_level" not in extracted_data:
+                extracted_data["risk_level"] = "medium"
+            if "documents_provided" not in extracted_data:
+                extracted_data["documents_provided"] = []
+            if "flags" not in extracted_data:
+                extracted_data["flags"] = []
+            
+            return extracted_data
     
     def generate(self) -> dict[str, pd.DataFrame]:
         """
@@ -316,7 +280,6 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             - scenario_type: Type of wealth source scenario
             - difficulty: Difficulty level
         """
-        scenarios = self._get_scenario_templates()
         difficulty_levels = ["easy", "medium", "hard"]
         
         # Generate samples
@@ -324,7 +287,7 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
         
         for i in range(self.config.num_samples):
             # Select scenario and difficulty
-            scenario = random.choice(scenarios)
+            scenario = random.choice(self.scenarios)
             difficulty = random.choice(difficulty_levels)
             
             # Get amount range for this difficulty
