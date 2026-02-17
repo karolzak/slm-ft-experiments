@@ -108,7 +108,7 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
                 "risk_profile": scenario['risk_profile']
             })
     
-    def _generate_notes_with_llm(
+    def _generate_note_text_with_llm(
         self,
         scenario: dict[str, Any],
         difficulty: str,
@@ -116,7 +116,7 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         currency: str
     ) -> str:
         """
-        Generate realistic account manager notes using LLM.
+        Generate realistic account manager note text using LLM.
         
         Args:
             scenario: Scenario template dictionary
@@ -125,7 +125,7 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
             currency: Currency code
             
         Returns:
-            Generated free-text account manager notes
+            Generated free-text account manager note text
         """
         # Adjust complexity based on difficulty
         if difficulty == "easy":
@@ -183,12 +183,12 @@ Write the notes in a natural, authentic style as if you're a real account manage
         
         return response.choices[0].message.content.strip()
     
-    def _extract_structured_data_with_llm(self, notes: str) -> dict[str, Any]:
+    def _extract_structured_data_with_llm(self, note_text: str) -> dict[str, Any]:
         """
-        Extract structured JSON from account manager notes using LLM.
+        Extract structured JSON from account manager note text using LLM.
         
         Args:
-            notes: Free-text account manager notes
+            note_text: Free-text account manager note text
             
         Returns:
             Dictionary with structured extracted data
@@ -205,7 +205,7 @@ Write the notes in a natural, authentic style as if you're a real account manage
 Extract information from these notes into the JSON schema below. Use null for missing information. Be precise and accurate.
 
 NOTES:
-{notes}
+{note_text}
 
 JSON SCHEMA:
 {schema}
@@ -275,7 +275,7 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
         
         Returns:
             Dictionary with 'train', 'val', 'test' DataFrames containing:
-            - notes: Free-text account manager notes
+            - note_text: Free-text account manager note text
             - structured_output: JSON string with extracted data
             - scenario_type: Type of wealth source scenario
             - difficulty: Difficulty level
@@ -297,15 +297,15 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             # Select currency
             currency = random.choice(scenario["currencies"])
             
-            # Generate notes
-            notes = self._generate_notes_with_llm(scenario, difficulty, amount, currency)
+            # Generate note text
+            note_text = self._generate_note_text_with_llm(scenario, difficulty, amount, currency)
             
             # Extract structured data
-            structured_data = self._extract_structured_data_with_llm(notes)
+            structured_data = self._extract_structured_data_with_llm(note_text)
             
             # Create sample
             sample = {
-                "notes": notes,
+                "note_text": note_text,
                 "structured_output": json.dumps(structured_data),
                 "scenario_type": scenario["scenario_type"],
                 "difficulty": difficulty
@@ -351,7 +351,7 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
         Returns:
             True if valid, False otherwise
         """
-        required_columns = ["notes", "structured_output", "scenario_type", "difficulty"]
+        required_columns = ["note_text", "structured_output", "scenario_type", "difficulty"]
         
         try:
             # Check all splits exist
@@ -362,7 +362,7 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             # Check each split
             all_scenario_types = set()
             all_risk_levels = set()
-            all_notes = set()
+            all_note_texts = set()
             
             for split_name, df in dataset.items():
                 # Check columns
@@ -398,7 +398,7 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
                     # Collect variety metrics
                     all_scenario_types.add(row["scenario_type"])
                     all_risk_levels.add(structured["risk_level"])
-                    all_notes.add(row["notes"])
+                    all_note_texts.add(row["note_text"])
             
             # Check for good variety
             if len(all_scenario_types) < 5:
@@ -411,8 +411,8 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             
             # Check for duplicates
             total_samples = sum(len(df) for df in dataset.values())
-            if len(all_notes) < total_samples:
-                print(f"WARNING: Found duplicate notes ({total_samples - len(all_notes)} duplicates)")
+            if len(all_note_texts) < total_samples:
+                print(f"WARNING: Found duplicate note texts ({total_samples - len(all_note_texts)} duplicates)")
                 return False
             
             print(f"✓ Validation passed: {len(all_scenario_types)} scenario types, {len(all_risk_levels)} risk levels, no duplicates")

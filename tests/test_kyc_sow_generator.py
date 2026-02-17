@@ -140,7 +140,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         # Verify columns
         for split in dataset.values():
-            self.assertIn("notes", split.columns)
+            self.assertIn("note_text", split.columns)
             self.assertIn("structured_output", split.columns)
             self.assertIn("scenario_type", split.columns)
             self.assertIn("difficulty", split.columns)
@@ -151,7 +151,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         # Create valid test data
         valid_data = {
-            "notes": "Meeting with John Smith. Employment income of GBP 50,000.",
+            "note_text": "Meeting with John Smith. Employment income of GBP 50,000.",
             "structured_output": json.dumps({
                 "customer_name": "John Smith",
                 "occupation": "Engineer",
@@ -179,7 +179,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         for i in range(20):
             sample = valid_data.copy()
-            sample["notes"] = f"Meeting {i}. Different content for variety."
+            sample["note_text"] = f"Meeting {i}. Different content for variety."
             
             # Vary scenario and risk
             scenario = scenario_types[i % len(scenario_types)]
@@ -216,7 +216,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         # Create dataset with missing column
         df = pd.DataFrame({
-            "notes": ["test"],
+            "note_text": ["test"],
             "structured_output": [json.dumps({"customer_name": "test", "wealth_sources": [{}], "risk_level": "low"})]
             # Missing scenario_type and difficulty
         })
@@ -236,7 +236,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         import pandas as pd
         
         df = pd.DataFrame({
-            "notes": ["test"],
+            "note_text": ["test"],
             "structured_output": ["invalid json {{}"],
             "scenario_type": ["employment"],
             "difficulty": ["easy"]
@@ -258,7 +258,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         # Missing customer_name
         df = pd.DataFrame({
-            "notes": ["test"],
+            "note_text": ["test"],
             "structured_output": [json.dumps({"occupation": "test"})],
             "scenario_type": ["employment"],
             "difficulty": ["easy"]
@@ -279,7 +279,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         import pandas as pd
         
         df = pd.DataFrame({
-            "notes": ["test"],
+            "note_text": ["test"],
             "structured_output": [json.dumps({
                 "customer_name": "test",
                 "wealth_sources": [],  # Empty array
@@ -307,7 +307,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         
         # Create test dataset
         df = pd.DataFrame({
-            "notes": ["test note 1", "test note 2"],
+            "note_text": ["test note 1", "test note 2"],
             "structured_output": [
                 json.dumps({"customer_name": "test1", "wealth_sources": [{}], "risk_level": "low"}),
                 json.dumps({"customer_name": "test2", "wealth_sources": [{}], "risk_level": "medium"})
@@ -355,7 +355,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         import pandas as pd
         
         df = pd.DataFrame({
-            "notes": ["note1", "note2", "note3", "note4"],
+            "note_text": ["note1", "note2", "note3", "note4"],
             "structured_output": [
                 json.dumps({"customer_name": "test", "wealth_sources": [{}], "risk_level": "low"}),
                 json.dumps({"customer_name": "test", "wealth_sources": [{}], "risk_level": "low"}),

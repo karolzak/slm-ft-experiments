@@ -119,8 +119,8 @@ def main():
     print(f"Scenario Type: {sample['scenario_type']}")
     print(f"Difficulty: {sample['difficulty']}")
     print()
-    print("Account Manager Notes:")
-    print(sample['notes'][:300] + "..." if len(sample['notes']) > 300 else sample['notes'])
+    print("Account Manager Note Text:")
+    print(sample['note_text'][:300] + "..." if len(sample['note_text']) > 300 else sample['note_text'])
     print()
     print("Structured Output (JSON):")
     import json
