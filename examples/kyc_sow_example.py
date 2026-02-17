@@ -12,7 +12,7 @@ Before running:
    AZURE_OPENAI_DEPLOYMENT=gpt-4  # or your deployment name
 
 2. Install dependencies:
-   pip install pandas openai python-dotenv
+   uv pip install pandas openai python-dotenv
 """
 
 import os

@@ -17,10 +17,10 @@ The KYC/SOW Data Generator creates synthetic datasets for **Know Your Customer (
 
 ```bash
 # Install dependencies
-pip install pandas openai python-dotenv
+uv pip install pandas openai python-dotenv
 
 # Or install the package
-pip install -e .
+uv pip install -e .
 ```
 
 ## Quick Start
@@ -35,7 +35,7 @@ AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4  # or your deployment name
 ```
 
-**Note**: Azure OpenAI credentials are required. The generator will raise a `ValueError` if credentials are not configured.
+**Note**: Azure OpenAI credentials are required.
 
 ### 2. Basic Usage
 
@@ -74,7 +74,7 @@ print(f"Generated {stats['total_samples']} samples")
 ### 3. Run Example Script
 
 ```bash
-python examples/kyc_sow_example.py
+uv run examples/kyc_sow_example.py
 ```
 
 ## Dataset Structure
@@ -306,23 +306,16 @@ Run the test suite:
 
 ```bash
 # Run all KYC/SOW generator tests
-python -m unittest tests.test_kyc_sow_generator -v
+uv run python -m unittest tests.test_kyc_sow_generator -v
 
 # Run all project tests
-python -m unittest discover -q
+uv run python -m unittest discover -q
 ```
-
-## Performance Considerations
-
-- **Generation Time**: ~2-5 seconds per sample (depends on Azure OpenAI response time)
-- **Recommended**: Start with 20-50 samples for testing, scale to 500+ for production
-- **Cost**: Azure OpenAI has per-token pricing - monitor usage for large datasets
-- **Rate Limits**: Azure OpenAI has TPM (tokens per minute) and RPM (requests per minute) limits
 
 ## Troubleshooting
 
 ### Issue: "No module named 'openai'"
-**Solution**: Install dependencies with `pip install openai pandas python-dotenv`
+**Solution**: Install dependencies with `uv pip install openai pandas python-dotenv`
 
 ### Issue: "Azure OpenAI credentials are required"
 **Solution**: Set up Azure OpenAI credentials in your `.env` file:
