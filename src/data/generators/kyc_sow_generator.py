@@ -629,7 +629,7 @@ JSON SCHEMA:
             try:
                 structured = json.loads(row["structured_output"])
                 risk_levels.append(structured.get("risk_level", "unknown"))
-            except:
+            except (json.JSONDecodeError, KeyError):
                 pass
         
         stats["risk_level_distribution"] = dict(Counter(risk_levels))
