@@ -42,11 +42,66 @@ class TestKYCSOWDataGenerator(unittest.TestCase):
         self.assertIsNotNone(generator.client)
     
     def test_generator_initialization_without_credentials(self):
-        """Test that generator fails without Azure credentials."""
+        """Test that generator fails without Azure endpoint."""
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(ValueError) as context:
                 KYCSOWDataGenerator(self.config)
-            self.assertIn("Azure OpenAI credentials are required", str(context.exception))
+            self.assertIn("AZURE_OPENAI_ENDPOINT is required", str(context.exception))
+
+    @patch.dict(os.environ, {
+        'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/'
+    }, clear=True)
+    @patch('src.data.generators.kyc_sow_generator.get_bearer_token_provider')
+    @patch('src.data.generators.kyc_sow_generator.DefaultAzureCredential')
+    @patch('src.data.generators.kyc_sow_generator.AzureOpenAI')
+    def test_generator_initialization_with_azure_ad(
+        self,
+        mock_client_class,
+        mock_default_credential,
+        mock_get_bearer_token_provider
+    ):
+        """Test generator initialization with Azure AD when API key is absent."""
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_default_credential.return_value = MagicMock()
+        mock_get_bearer_token_provider.return_value = MagicMock()
+
+        generator = KYCSOWDataGenerator(self.config)
+        self.assertEqual(generator.auth_mode, "azure_ad")
+        self.assertIsNotNone(generator.client)
+
+    @patch.dict(os.environ, {
+        'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+        'AZURE_OPENAI_API_KEY': 'test-key',
+        'AZURE_OPENAI_AUTH_MODE': 'azure_ad'
+    }, clear=True)
+    @patch('src.data.generators.kyc_sow_generator.get_bearer_token_provider')
+    @patch('src.data.generators.kyc_sow_generator.DefaultAzureCredential')
+    @patch('src.data.generators.kyc_sow_generator.AzureOpenAI')
+    def test_generator_forces_azure_ad_auth_mode(
+        self,
+        mock_client_class,
+        mock_default_credential,
+        mock_get_bearer_token_provider
+    ):
+        """Test auth mode can force Azure AD even when API key is present."""
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_default_credential.return_value = MagicMock()
+        mock_get_bearer_token_provider.return_value = MagicMock()
+
+        generator = KYCSOWDataGenerator(self.config)
+        self.assertEqual(generator.auth_mode, "azure_ad")
+
+    @patch.dict(os.environ, {
+        'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
+        'AZURE_OPENAI_AUTH_MODE': 'invalid'
+    }, clear=True)
+    def test_generator_invalid_auth_mode(self):
+        """Test invalid auth mode configuration fails clearly."""
+        with self.assertRaises(ValueError) as context:
+            KYCSOWDataGenerator(self.config)
+        self.assertIn("AZURE_OPENAI_AUTH_MODE must be one of", str(context.exception))
     
     @patch.dict(os.environ, {
         'AZURE_OPENAI_ENDPOINT': 'https://test.openai.azure.com/',
@@ -90,15 +145,13 @@ class TestKYCSOWDataGenerator(unittest.TestCase):
         
         # Mock note generation response
         mock_note_response = MagicMock()
-        mock_note_response.choices = [MagicMock()]
-        mock_note_response.choices[0].message.content = """Meeting with Sarah Thompson, 34, Senior Software Engineer.
+        mock_note_response.output_text = """Meeting with Sarah Thompson, 34, Senior Software Engineer.
         
 Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provided payslips and P60. Low risk."""
         
         # Mock extraction response
         mock_extract_response = MagicMock()
-        mock_extract_response.choices = [MagicMock()]
-        mock_extract_response.choices[0].message.content = json.dumps({
+        mock_extract_response.output_text = json.dumps({
             "customer_name": "Sarah Thompson",
             "occupation": "Senior Software Engineer",
             "wealth_sources": [
@@ -116,7 +169,7 @@ Deposit of GBP 45,000 from employment savings. Salary £95,000 per annum. Provid
         })
         
         # Alternate between note and extraction responses
-        mock_client.chat.completions.create.side_effect = [
+        mock_client.responses.create.side_effect = [
             mock_note_response, mock_extract_response
         ] * 10  # For 10 samples
         

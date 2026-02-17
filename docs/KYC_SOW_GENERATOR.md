@@ -31,11 +31,13 @@ Create a `.env` file with your Azure credentials:
 
 ```bash
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_API_KEY=your-api-key  # optional if using Entra ID auth
 AZURE_OPENAI_DEPLOYMENT=gpt-4  # or your deployment name
+AZURE_OPENAI_API_VERSION=2025-04-01-preview
+AZURE_OPENAI_AUTH_MODE=auto  # auto|api_key|azure_ad
 ```
 
-**Note**: Azure OpenAI credentials are required.
+**Note**: `AZURE_OPENAI_ENDPOINT` is required. Authenticate using either API key (`AZURE_OPENAI_API_KEY`) or Microsoft Entra ID (no key, but local `az login`/managed identity with proper RBAC). Use `AZURE_OPENAI_AUTH_MODE=azure_ad` to force Entra ID even when an API key is present.
 
 ### 2. Basic Usage
 

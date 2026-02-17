@@ -6,10 +6,12 @@ This script demonstrates how to use the KYC/SOW data generator to create
 synthetic datasets for financial compliance ML tasks.
 
 Before running:
-1. Set up Azure OpenAI credentials in .env file:
+1. Set up Azure OpenAI configuration in .env file:
    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-   AZURE_OPENAI_API_KEY=your-api-key
+    AZURE_OPENAI_API_KEY=your-api-key  # optional if using Entra ID auth
    AZURE_OPENAI_DEPLOYMENT=gpt-4  # or your deployment name
+    AZURE_OPENAI_API_VERSION=2025-04-01-preview
+    AZURE_OPENAI_AUTH_MODE=auto  # auto|api_key|azure_ad
 
 2. Install dependencies:
    uv pip install pandas openai python-dotenv
@@ -32,14 +34,16 @@ def main():
     load_dotenv()
     
     # Check if Azure OpenAI is configured
-    if not os.getenv("AZURE_OPENAI_ENDPOINT") or not os.getenv("AZURE_OPENAI_API_KEY"):
-        print("❌ ERROR: Azure OpenAI credentials not configured")
+    if not os.getenv("AZURE_OPENAI_ENDPOINT"):
+        print("❌ ERROR: Azure OpenAI endpoint not configured")
         print()
-        print("The KYC/SOW generator requires Azure OpenAI credentials.")
+        print("The KYC/SOW generator requires an Azure OpenAI endpoint.")
         print("Please set the following environment variables in your .env file:")
         print("  - AZURE_OPENAI_ENDPOINT")
-        print("  - AZURE_OPENAI_API_KEY")
+        print("  - AZURE_OPENAI_API_KEY (optional if using Entra ID auth)")
         print("  - AZURE_OPENAI_DEPLOYMENT (optional, defaults to 'gpt-4')")
+        print("  - AZURE_OPENAI_API_VERSION (optional, defaults to '2025-04-01-preview')")
+        print("  - AZURE_OPENAI_AUTH_MODE (optional: auto|api_key|azure_ad)")
         print()
         return
     

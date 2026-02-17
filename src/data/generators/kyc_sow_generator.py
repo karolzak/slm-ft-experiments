@@ -8,13 +8,20 @@ for Know Your Customer (KYC) and Source of Wealth (SOW) extraction tasks.
 import os
 import json
 import random
+import re
 import yaml
 from pathlib import Path
 from typing import Any
 from collections import Counter
 import pandas as pd
-from openai import AzureOpenAI
+from openai import AzureOpenAI, BadRequestError
 from pydantic import ValidationError
+
+try:
+    from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+except ImportError:
+    DefaultAzureCredential = None
+    get_bearer_token_provider = None
 
 from .base import BaseDatasetGenerator, DatasetConfig
 from .kyc_sow_schema import KYCSOWOutput, get_kyc_sow_schema
@@ -45,22 +52,58 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         super().__init__(config)
         
         # Check if Azure OpenAI is configured
-        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "")
-        api_key = os.getenv("AZURE_OPENAI_API_KEY", "")
-        
-        # Require Azure OpenAI credentials
-        if not endpoint or not api_key:
+        endpoint = os.getenv("AZURE_OPENAI_ENDPOINT", "").strip()
+        api_key = os.getenv("AZURE_OPENAI_API_KEY", "").strip()
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2025-04-01-preview")
+        auth_mode = os.getenv("AZURE_OPENAI_AUTH_MODE", "auto").strip().lower()
+
+        if not endpoint:
             raise ValueError(
-                "Azure OpenAI credentials are required for KYC/SOW data generation. "
-                "Please set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables."
+                "AZURE_OPENAI_ENDPOINT is required for KYC/SOW data generation."
             )
-        
-        # Initialize Azure OpenAI client
-        self.client = AzureOpenAI(
-            azure_endpoint=endpoint,
-            api_key=api_key,
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
-        )
+
+        if auth_mode not in {"auto", "api_key", "azure_ad"}:
+            raise ValueError(
+                "AZURE_OPENAI_AUTH_MODE must be one of: auto, api_key, azure_ad"
+            )
+
+        # Initialize Azure OpenAI client with dual authentication support:
+        # 1) API key auth when mode=api_key, or mode=auto with AZURE_OPENAI_API_KEY provided
+        # 2) Microsoft Entra ID auth when mode=azure_ad, or mode=auto without API key
+        use_api_key = auth_mode == "api_key" or (auth_mode == "auto" and bool(api_key))
+
+        if use_api_key:
+            if not api_key:
+                raise ValueError(
+                    "AZURE_OPENAI_AUTH_MODE is 'api_key' but AZURE_OPENAI_API_KEY is not set."
+                )
+
+            self.client = AzureOpenAI(
+                azure_endpoint=endpoint,
+                api_key=api_key,
+                api_version=api_version
+            )
+            self.auth_mode = "api_key"
+        else:
+            if DefaultAzureCredential is None or get_bearer_token_provider is None:
+                raise ValueError(
+                    "AZURE_OPENAI_API_KEY is not set and azure-identity is not installed. "
+                    "Install azure-identity or provide AZURE_OPENAI_API_KEY."
+                )
+
+            credential = DefaultAzureCredential()
+            token_provider = get_bearer_token_provider(
+                credential,
+                "https://cognitiveservices.azure.com/.default"
+            )
+
+            self.client = AzureOpenAI(
+                azure_endpoint=endpoint,
+                azure_ad_token_provider=token_provider,
+                api_version=api_version
+            )
+            self.auth_mode = "azure_ad"
+
         self.deployment_name = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4")
         
         # Load scenario templates from config file
@@ -68,6 +111,85 @@ class KYCSOWDataGenerator(BaseDatasetGenerator):
         
         # Set random seed for reproducibility
         random.seed(self.seed)
+
+    def _get_raw_response_text(self, response: Any) -> str:
+        """
+        Extract raw text content from a Responses API response.
+
+        Args:
+            response: Response object returned by Azure OpenAI Responses API
+
+        Returns:
+            Raw text content as a string
+
+        Raises:
+            ValueError: If no text content can be extracted
+        """
+        # Fast path supported by latest SDKs
+        output_text = getattr(response, "output_text", None)
+        if output_text and output_text.strip():
+            return output_text.strip()
+
+        # Fallback: manually walk response.output blocks
+        output = getattr(response, "output", []) or []
+        text_chunks: list[str] = []
+
+        for item in output:
+            content_blocks = getattr(item, "content", []) or []
+            for block in content_blocks:
+                block_text = getattr(block, "text", None)
+                if isinstance(block_text, str) and block_text.strip():
+                    text_chunks.append(block_text)
+
+        content = "\n".join(text_chunks).strip()
+        if content:
+            return content
+
+        raise ValueError("No text content returned by Responses API")
+
+    def _create_response(self, prompt: str, max_output_tokens: int, temperature: float) -> Any:
+        """
+        Create a response via Responses API with model compatibility fallback.
+
+        Retries once without temperature if the model does not support it.
+        """
+        request_args = {
+            "model": self.deployment_name,
+            "input": prompt,
+            "max_output_tokens": max_output_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            return self.client.responses.create(**request_args)
+        except BadRequestError as exc:
+            error_message = str(exc).lower()
+            if "temperature" in error_message and "not supported" in error_message:
+                request_args.pop("temperature", None)
+                return self.client.responses.create(**request_args)
+            raise
+
+    def _parse_json_from_response_text(self, content: str) -> dict[str, Any]:
+        """
+        Parse JSON content from a model response, handling wrapped text/code blocks.
+        """
+        cleaned = content.strip()
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            match = re.search(r"\{[\s\S]*\}", cleaned)
+            if match:
+                return json.loads(match.group(0))
+            raise
     
     def _load_scenario_templates(self) -> None:
         """
@@ -174,14 +296,13 @@ Style guidelines for {difficulty} difficulty:
 Write the notes in a natural, authentic style as if you're a real account manager documenting this meeting. Do not use markdown formatting or headers - just write the notes naturally.
 """
         
-        response = self.client.chat.completions.create(
-            model=self.deployment_name,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000,
+        response = self._create_response(
+            prompt=prompt,
+            max_output_tokens=1000,
             temperature=0.8
         )
-        
-        return response.choices[0].message.content.strip()
+
+        return self._get_raw_response_text(response)
     
     def _extract_structured_data_with_llm(self, note_text: str) -> dict[str, Any]:
         """
@@ -202,6 +323,9 @@ Write the notes in a natural, authentic style as if you're a real account manage
         
         prompt = f"""You are an expert at extracting structured information from account manager notes for compliance and risk assessment.
 
+    This is for a synthetic ML dataset used in financial compliance training and evaluation.
+    Do not provide advice on evasion or wrongdoing. Only extract facts from the notes.
+
 Extract information from these notes into the JSON schema below. Use null for missing information. Be precise and accurate.
 
 NOTES:
@@ -213,26 +337,16 @@ JSON SCHEMA:
 Extract the information and return ONLY valid JSON (no markdown, no explanations, just the JSON object):"""
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=800,
+            response = self._create_response(
+                prompt=prompt,
+                max_output_tokens=800,
                 temperature=0.3
             )
-            
-            content = response.choices[0].message.content.strip()
-            
-            # Clean up markdown code blocks if present
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-            
-            # Parse JSON
-            extracted_data = json.loads(content)
+
+            content = self._get_raw_response_text(response)
+
+            # Parse JSON with resilient text cleanup
+            extracted_data = self._parse_json_from_response_text(content)
             
             # Validate against Pydantic schema
             validated_output = KYCSOWOutput(**extracted_data)
@@ -241,11 +355,33 @@ Extract the information and return ONLY valid JSON (no markdown, no explanations
             return validated_output.model_dump()
             
         except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(
-                f"Failed to parse JSON from LLM response. Content: {content[:200]}...",
-                e.doc,
-                e.pos
+            # Retry once with stricter formatting instructions
+            retry_prompt = f"""Extract structured data from the notes below and return ONLY a valid JSON object matching the schema.
+If any field is unknown, use null (or [] for arrays). No explanations.
+
+NOTES:
+{notes}
+
+JSON SCHEMA:
+{schema}
+"""
+            retry_response = self._create_response(
+                prompt=retry_prompt,
+                max_output_tokens=800,
+                temperature=0.1
             )
+            retry_content = self._get_raw_response_text(retry_response)
+
+            try:
+                extracted_data = self._parse_json_from_response_text(retry_content)
+                validated_output = KYCSOWOutput(**extracted_data)
+                return validated_output.model_dump()
+            except Exception:
+                raise json.JSONDecodeError(
+                    f"Failed to parse JSON from LLM response. Content: {retry_content[:200]}...",
+                    e.doc,
+                    e.pos
+                )
         except ValidationError as e:
             # If validation fails, try to fix common issues and return best-effort result
             print(f"WARNING: Schema validation failed: {e}")
